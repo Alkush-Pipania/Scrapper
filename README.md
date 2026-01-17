@@ -122,7 +122,3 @@ GET /scrape/{job_id}
 ```
 
 ---
-
-## 📄 License
-
-MIT

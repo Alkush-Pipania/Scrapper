@@ -6,22 +6,27 @@ import (
 )
 
 type Config struct {
-	RabbitURL     string
-	QueueName     string
-	WorkerCount   int
+	RabbitMQ      RabbitMQConfig
 	PrefetchCount int
 	Port          string
-	RedistURL     string
+	RedisURL      string
+	Env           string
 }
 
 func LoadEnv() *Config {
 	return &Config{
-		RabbitURL:     getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
-		QueueName:     getenv("QUEUE_NAME", "scrape.jobs"),
-		WorkerCount:   getenvInt("WORKER_COUNT", 5),
+		RabbitMQ: RabbitMQConfig{
+			BrokerLink:   getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
+			ExchangeName: getenv("EXCHANGE_NAME", "scrape.exchange"),
+			ExchangeType: getenv("EXCHANGE_TYPE", "direct"),
+			QueueName:    getenv("QUEUE_NAME", "scrape.jobs"),
+			RoutingKey:   getenv("ROUTING_KEY", "scrape"),
+			WorkerCount:  getenvInt("WORKER_COUNT", 5),
+		},
 		PrefetchCount: getenvInt("PREFETCH_COUNT", 5),
 		Port:          getenv("PORT", "8080"),
-		RedistURL:     getenv("REDIS_URL", "redis://localhost:6379/0"),
+		RedisURL:      getenv("REDIS_URL", "redis://localhost:6379/0"),
+		Env:           getenv("ENV", "development"),
 	}
 }
 

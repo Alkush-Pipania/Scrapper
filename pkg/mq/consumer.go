@@ -1,111 +1,116 @@
 package mq
 
-// import (
-// 	"context"
-// 	"errors"
-// 	"log"
-// 	"sync"
-// 	"time"
+import (
+	"context"
+	"errors"
+	"log"
+	"sync"
+	"time"
 
-// 	"github.com/google/uuid"
-// 	"github.com/rabbitmq/amqp091-go"
-// )
+	"github.com/google/uuid"
+	amqp "github.com/rabbitmq/amqp091-go"
+)
 
-// type Consumer struct {
-// 	ch          *amqp091.Channel
-// 	queueName   string
-// 	workers     int
-// 	sem         chan struct{}
-// 	wg          sync.WaitGroup
-// 	consumerTag string
-// }
+type Consumer struct {
+	ch          *amqp.Channel
+	queueName   string
+	workers     int
+	sem         chan struct{}
+	wg          sync.WaitGroup
+	consumerTag string
+}
 
-// func NewConsumer(conn *amqp091.Connection, queueName string, workers int) (*Consumer, error) {
-// 	if conn == nil {
-// 		return nil, errors.New("amqp connection is nil")
-// 	}
-// 	ch, err := conn.Channel()
-// 	if err != nil {
-// 		return nil, err
-// 	}
+func NewConsumer(conn *amqp.Connection, queueName string, workers int) (*Consumer, error) {
+	if conn == nil {
+		return nil, errors.New("amqp connection is nil")
+	}
+	ch, err := conn.Channel()
+	if err != nil {
+		return nil, err
+	}
 
-// 	if err := ch.Qos(workers, 0, false); err != nil {
-// 		return nil, err
-// 	}
+	if err := ch.Qos(workers, 0, false); err != nil {
+		return nil, err
+	}
 
-// 	return &Consumer{
-// 		ch:        ch,
-// 		queueName: queueName,
-// 		workers:   workers,
-// 		sem:       make(chan struct{}, workers),
-// 	}, nil
-// }
+	return &Consumer{
+		ch:        ch,
+		queueName: queueName,
+		workers:   workers,
+		sem:       make(chan struct{}, workers),
+	}, nil
+}
 
-// func (c *Consumer) Consumer(ctx context.Context, handler *EventHandler) error {
-// 	c.consumerTag = uuid.NewString()
+type Handler interface {
+	Handle(ctx context.Context, msg amqp.Delivery) error
+}
 
-// 	msgs, err := c.ch.Consume(
-// 		c.queueName,
-// 		c.consumerTag,
-// 		false,
-// 		false,
-// 		false,
-// 		false,
-// 		nil,
-// 	)
+func (c *Consumer) Consumer(ctx context.Context, handler Handler) error {
+	c.consumerTag = uuid.NewString()
 
-// 	if err != nil {
-// 		return err
-// 	}
+	msgs, err := c.ch.Consume(
+		c.queueName,
+		c.consumerTag,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
 
-// 	go func() {
-// 		<-ctx.Done()
-// 		_ = c.ch.Cancel(c.consumerTag, false)
-// 	}()
+	if err != nil {
+		return err
+	}
 
-// 	for msg := range msgs {
-// 		c.sem <- struct{}{}
-// 		c.wg.Add(1)
+	go func() {
+		<-ctx.Done()
+		// it only stop the delivery not cancel the cancel
+		_ = c.ch.Cancel(c.consumerTag, false)
+	}()
 
-// 		go func(m amqp091.Delivery) {
-// 			defer c.wg.Done()
-// 			defer func() { <-c.sem }()
+	for msg := range msgs {
+		c.sem <- struct{}{}
+		c.wg.Add(1)
 
-// 			msgCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-// 			defer cancel()
+		go func(m amqp.Delivery) {
+			defer c.wg.Done()
+			defer func() { <-c.sem }()
 
-// 			if err := handler.Handle(msgCtx, m); err != nil {
-// 				log.Printf("message failed: %v", err)
-// 				_ = m.Nack(false, false)
-// 				return
-// 			}
+			msgCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
 
-// 			_ = m.Ack(false)
+			if err := handler.Handle(msgCtx, m); err != nil {
+				log.Printf("message failed: %v", err)
+				_ = m.Nack(false, false)
+				return
+			}
 
-// 		}(msg)
+			_ = m.Ack(false)
 
-// 	}
+		}(msg)
 
-// 	c.wg.Wait()
-// 	return nil
-// }
+	}
 
-// func (c *Consumer) Shutdown(ctx context.Context) error {
-// 	if c.consumerTag != "" {
-// 		_ = c.ch.Cancel(c.consumerTag, false)
-// 	}
+	c.wg.Wait()
+	return nil
+}
 
-// 	done := make(chan struct{})
+func (c *Consumer) Shutdown(ctx context.Context) error {
+	if c.consumerTag != "" {
+		_ = c.ch.Cancel(c.consumerTag, false)
+	}
 
-// 	go func() {
-// 		c.wg.Wait()
-// 		close(done)
-// 	}()
+	done := make(chan struct{})
 
-// 	select {
-// 	case <-done:
-// 		return c.ch.Close()
-// 	case <-ctx.Done():
-// 		return ctx.Err()
-// 	}
-// }
+	go func() {
+		c.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		return c.ch.Close()
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
