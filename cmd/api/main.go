@@ -1,9 +1,10 @@
-package api
+package main
 
 import (
 	"context"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/Alkush-Pipania/Scrapper/config"
 	"github.com/Alkush-Pipania/Scrapper/internal/app"
@@ -29,9 +30,25 @@ func main() {
 	app.StartConsumer(ctx, container)
 	router := app.NewRouter(container)
 
-	srv := server.New(router, cfg.Port)
-	err = srv.ListenAndServe()
-	if err != nil {
-		log.Fatal().Err(err).Msg("failed to Start Server")
+	srv := server.New(router, cfg.Port, log)
+	srv.Start()
+
+	<-ctx.Done() // wait for the signal
+	log.Info().Msg("shutdown signal received")
+
+	// 1. Stop HTTP server (stop accepting requests)
+	if err := srv.Shutdown(context.Background()); err != nil {
+		log.Error().Err(err).Msg("server shutdown failed")
 	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := container.Shutdown(shutdownCtx); err != nil {
+		log.Error().Err(err).Msg("dependecies shutdown failed")
+	}
+
+	// Shutdown done
+	log.Info().Msg("graceful shutdown complete")
+
 }
