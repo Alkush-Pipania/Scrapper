@@ -27,12 +27,12 @@ func (s *service) SubmitJob(ctx context.Context, req SubmitScrapeRequest) (strin
 	if err := s.rds.CreateJob(jobID, req.URL); err != nil {
 		return "", err
 	}
-	MsgBody, _ := json.Marshal(&MsgBody{
-		url: req.URL,
-		id:  jobID,
+	msgBody, _ := json.Marshal(&MsgBody{
+		URL: req.URL,
+		ID:  jobID,
 	})
 
-	err := s.mqch.Publish(ctx, MsgBody)
+	err := s.mqch.Publish(ctx, msgBody)
 	if err != nil {
 		log.Printf("failed to publish job , id : %v and error : %v", jobID, err)
 		return "", err
