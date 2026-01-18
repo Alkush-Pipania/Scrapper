@@ -12,7 +12,7 @@ import (
 
 type ScrapeWorker struct {
 	store   *redis.RedisStore
-	scraper *scraper.Scrapper
+	scraper *scraper.Scraper
 }
 
 func NewScrapeWorker(store *redis.RedisStore) *ScrapeWorker {

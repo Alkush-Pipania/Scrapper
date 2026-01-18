@@ -79,8 +79,7 @@ func (r *RedisStore) FailJob(id string, errMsg string) error {
 	}
 	job.Status = StatusFailed
 	job.Error = errMsg
-	r.save(job)
-	return nil
+	return r.save(job)
 }
 
 func (r *RedisStore) UpdateResult(id string, data *scraper.ScrapedData) error {

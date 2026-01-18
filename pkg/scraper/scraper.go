@@ -14,12 +14,12 @@ import (
 	"github.com/go-shiori/go-readability"
 )
 
-type Scrapper struct {
+type Scraper struct {
 	client *http.Client
 }
 
-func New() *Scrapper {
-	return &Scrapper{
+func New() *Scraper {
+	return &Scraper{
 		client: &http.Client{
 			Timeout: 15 * time.Second, // Overall request timeout
 			Transport: &http.Transport{
@@ -32,7 +32,7 @@ func New() *Scrapper {
 	}
 }
 
-func (s *Scrapper) Scrape(ctx context.Context, targetURL string) (*ScrapedData, error) {
+func (s *Scraper) Scrape(ctx context.Context, targetURL string) (*ScrapedData, error) {
 	// Fetch the HTML
 	htmlBytes, err := s.fetchHTML(ctx, targetURL)
 	if err != nil {
@@ -113,7 +113,7 @@ func (s *Scrapper) Scrape(ctx context.Context, targetURL string) (*ScrapedData, 
 
 }
 
-func (s *Scrapper) fetchHTML(ctx context.Context, urlStr string) ([]byte, error) {
+func (s *Scraper) fetchHTML(ctx context.Context, urlStr string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", urlStr, nil)
 	if err != nil {
 		return nil, err
@@ -122,9 +122,6 @@ func (s *Scrapper) fetchHTML(ctx context.Context, urlStr string) ([]byte, error)
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
 	resp, err := s.client.Do(req)
-	if resp != nil {
-		defer resp.Body.Close()
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -137,14 +134,12 @@ func (s *Scrapper) fetchHTML(ctx context.Context, urlStr string) ([]byte, error)
 	return io.ReadAll(limitedBody)
 }
 
-func (s *Scrapper) findMeta(doc *goquery.Document, tags ...string) string {
+func (s *Scraper) findMeta(doc *goquery.Document, tags ...string) string {
 	for _, tag := range tags {
-		// check property="..."
 		val := doc.Find(fmt.Sprintf("meta[property='%s']", tag)).AttrOr("content", "")
 		if val != "" {
 			return val
 		}
-		// check name="..."
 		val = doc.Find(fmt.Sprintf("meta[name='%s']", tag)).AttrOr("content", "")
 		if val != "" {
 			return val
