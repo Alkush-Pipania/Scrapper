@@ -7,6 +7,7 @@ import (
 	"github.com/Alkush-Pipania/Scrapper/internal/modules/scrape"
 	"github.com/Alkush-Pipania/Scrapper/pkg/mq"
 	"github.com/Alkush-Pipania/Scrapper/pkg/redis"
+	"github.com/Alkush-Pipania/Scrapper/pkg/turnstile"
 	"github.com/rabbitmq/amqp091-go"
 )
 
@@ -31,9 +32,12 @@ func NewContainer(ctx context.Context, cfg *config.Config) (*Container, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	tsClient := turnstile.New(cfg.TurnstileSecret)
+
 	scrapeWorker := scrape.NewScrapeWorker(rds)
 	scrapeService := scrape.NewService(rds, pbh)
-	scrapeHandler := scrape.NewHandler(scrapeService)
+	scrapeHandler := scrape.NewHandler(scrapeService, tsClient)
 	return &Container{
 		ScrapeHandler: scrapeHandler,
 		consumer:      consumer,
