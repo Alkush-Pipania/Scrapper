@@ -14,6 +14,7 @@ type Container struct {
 	ScrapeHandler *scrape.Handler
 	consumer      *mq.Consumer
 	RMQConn       *amqp091.Connection
+	ScrapeWk      *scrape.ScrapeWorker
 }
 
 func NewContainer(ctx context.Context, cfg *config.Config) (*Container, error) {
@@ -30,12 +31,14 @@ func NewContainer(ctx context.Context, cfg *config.Config) (*Container, error) {
 	if err != nil {
 		return nil, err
 	}
+	scrapeWorker := scrape.NewScrapeWorker(rds)
 	scrapeService := scrape.NewService(rds, pbh)
 	scrapeHandler := scrape.NewHandler(scrapeService)
 	return &Container{
 		ScrapeHandler: scrapeHandler,
 		consumer:      consumer,
 		RMQConn:       rmqpConn,
+		ScrapeWk:      scrapeWorker,
 	}, nil
 }
 

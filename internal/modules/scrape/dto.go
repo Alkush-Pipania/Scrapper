@@ -20,6 +20,6 @@ type ScrapeStatusResponse struct {
 	Error  string      `json:"error,omitempty"`
 }
 type MsgBody struct {
-	id  string
-	url string
+	ID  string `json:"id"`
+	URL string `json:"url"`
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Alkush-Pipania/Scrapper/pkg/scraper"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -69,4 +70,25 @@ func (r *RedisStore) GetJob(id string) (*Job, error) {
 		return nil, err
 	}
 	return &job, nil
+}
+
+func (r *RedisStore) FailJob(id string, errMsg string) error {
+	job, err := r.GetJob(id)
+	if err != nil {
+		return err
+	}
+	job.Status = StatusFailed
+	job.Error = errMsg
+	r.save(job)
+	return nil
+}
+
+func (r *RedisStore) UpdateResult(id string, data *scraper.ScrapedData) error {
+	job, err := r.GetJob(id)
+	if err != nil {
+		return err
+	}
+	job.Status = StatusCompleted
+	job.Result = data
+	return r.save(job)
 }
