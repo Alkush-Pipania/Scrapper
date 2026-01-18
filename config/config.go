@@ -25,7 +25,7 @@ func LoadEnv() *Config {
 		},
 		PrefetchCount: getenvInt("PREFETCH_COUNT", 5),
 		Port:          getenv("PORT", "8080"),
-		RedisURL:      getenv("REDIS_URL", "redis://localhost:6379/0"),
+		RedisURL:      getenv("REDIS_URL", "localhost:6379"),
 		Env:           getenv("ENV", "development"),
 	}
 }

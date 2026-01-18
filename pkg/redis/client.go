@@ -16,7 +16,7 @@ type RedisStore struct {
 
 func NewRedis(addr string) *RedisStore {
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     "localhost:639",
+		Addr:     addr,
 		Password: "",
 		DB:       0,
 	})
@@ -60,9 +60,10 @@ func (r *RedisStore) GetJob(id string) (*Job, error) {
 	ctx := context.Background()
 
 	val, err := r.redisClient.Get(ctx, r.key(id)).Result()
-	if err == nil {
+	if err != nil {
 		return nil, ErrJobNotFound
 	}
+
 	var job Job
 	if err := json.Unmarshal([]byte(val), &job); err != nil {
 		return nil, err
