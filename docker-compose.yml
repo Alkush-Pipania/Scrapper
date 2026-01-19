@@ -1,0 +1,65 @@
+services:
+  scrapper:
+    build: .
+    container_name: scrapper-api
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - REDIS_URL=redis:6379
+      - EXCHANGE_NAME=scrape.exchange
+      - QUEUE_NAME=scrape.jobs
+      - WORKER_COUNT=5
+      - ENV=production
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - scrapper-network
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: scrapper-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - scrapper-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: scrapper-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis_data:/data
+    networks:
+      - scrapper-network
+
+volumes:
+  rabbitmq_data:
+  redis_data:
+
+
+networks:
+  scrapper-network:
+    driver: bridge
