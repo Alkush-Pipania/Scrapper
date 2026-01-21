@@ -35,7 +35,7 @@ func NewContainer(ctx context.Context, cfg *config.Config) (*Container, error) {
 
 	tsClient := turnstile.New(cfg.TurnstileSecret)
 
-	scrapeWorker := scrape.NewScrapeWorker(rds)
+	scrapeWorker := scrape.NewScrapeWorker(rds, cfg.YouTubeAPIKey)
 	scrapeService := scrape.NewService(rds, pbh)
 	scrapeHandler := scrape.NewHandler(scrapeService, tsClient)
 	return &Container{

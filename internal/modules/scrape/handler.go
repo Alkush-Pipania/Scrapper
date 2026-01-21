@@ -28,16 +28,16 @@ func NewHandler(service Service, turnstile *turnstile.Client) *Handler {
 
 func (h *Handler) SubmitScrape(w http.ResponseWriter, r *http.Request) {
 
-	token := r.Header.Get("X-Turnstile-Token")
-	if token == "" {
-		http.Error(w, "Missing turnstile token", http.StatusUnauthorized)
-		return
-	}
+	// token := r.Header.Get("X-Turnstile-Token")
+	// if token == "" {
+	// 	http.Error(w, "Missing turnstile token", http.StatusUnauthorized)
+	// 	return
+	// }
 
-	if err := h.turnstile.Verify(r.Context(), token, r.RemoteAddr); err != nil {
-		http.Error(w, "Invalid turnstile token", http.StatusUnauthorized)
-		return
-	}
+	// if err := h.turnstile.Verify(r.Context(), token, r.RemoteAddr); err != nil {
+	// 	http.Error(w, "Invalid turnstile token", http.StatusUnauthorized)
+	// 	return
+	// }
 
 	var req SubmitScrapeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
