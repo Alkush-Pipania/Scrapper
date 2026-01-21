@@ -15,10 +15,10 @@ type ScrapeWorker struct {
 	scraper *scraper.Scraper
 }
 
-func NewScrapeWorker(store *redis.RedisStore) *ScrapeWorker {
+func NewScrapeWorker(store *redis.RedisStore, youtubeAPIKey string) *ScrapeWorker {
 	return &ScrapeWorker{
 		store:   store,
-		scraper: scraper.New(),
+		scraper: scraper.NewWithYouTube(youtubeAPIKey),
 	}
 }
 
@@ -40,15 +40,27 @@ func (w *ScrapeWorker) Handle(ctx context.Context, msg amqp091.Delivery) error {
 
 	data, err := w.scraper.Scrape(ctx, payload.URL)
 	if err != nil {
-		log.Error().Err(err).Str("job_id", payload.ID).Msg("Scrape failed")
+		log.Error().
+			Err(err).
+			Str("job_id", payload.ID).
+			Str("url", payload.URL).
+			Msg("Scrape failed")
 
 		if storeErr := w.store.FailJob(payload.ID, err.Error()); storeErr != nil {
 			log.Error().Err(storeErr).Msg("Failed to update job status to failed")
 		}
-		// Return nil so we Ack the message.
 		return nil
 	}
-	log.Info().Str("job_id", payload.ID).Msg("Scrape successful, saving results")
+
+	// Detailed logging for debugging scrape results
+	log.Info().
+		Str("job_id", payload.ID).
+		Str("title", data.Title).
+		Str("image_url", data.ImageURL).
+		Int("content_text_len", len(data.ContentText)).
+		Bool("has_description", data.Description != "").
+		Str("site_name", data.SiteName).
+		Msg("Scrape completed successfully")
 
 	return w.store.UpdateResult(payload.ID, data)
 }

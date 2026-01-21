@@ -10,9 +10,11 @@ import (
 	"github.com/Alkush-Pipania/Scrapper/internal/app"
 	"github.com/Alkush-Pipania/Scrapper/internal/server"
 	"github.com/Alkush-Pipania/Scrapper/pkg/logger"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	_ = godotenv.Load()
 	cfg := config.LoadEnv()
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
