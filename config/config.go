@@ -12,6 +12,7 @@ type Config struct {
 	RedisURL        string
 	Env             string
 	TurnstileSecret string
+	YouTubeAPIKey   string
 }
 
 func LoadEnv() *Config {
@@ -25,10 +26,11 @@ func LoadEnv() *Config {
 			WorkerCount:  getenvInt("WORKER_COUNT", 5),
 		},
 		PrefetchCount:   getenvInt("PREFETCH_COUNT", 5),
-		Port:            getenv("PORT", "8080"),
+		Port:            getenv("PORT", "8082"),
 		RedisURL:        getenv("REDIS_URL", "localhost:6379"),
 		Env:             getenv("ENV", "development"),
 		TurnstileSecret: getenv("TURNSTILE_SECRET_KEY", ""),
+		YouTubeAPIKey:   getenv("YOUTUBE_API_KEY", ""),
 	}
 }
 
