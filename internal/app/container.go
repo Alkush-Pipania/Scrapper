@@ -2,12 +2,17 @@ package app
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/Alkush-Pipania/Scrapper/config"
 	"github.com/Alkush-Pipania/Scrapper/internal/modules/scrape"
+	"github.com/Alkush-Pipania/Scrapper/pkg/browserless"
 	"github.com/Alkush-Pipania/Scrapper/pkg/mq"
 	"github.com/Alkush-Pipania/Scrapper/pkg/redis"
+	"github.com/Alkush-Pipania/Scrapper/pkg/s3"
+	"github.com/Alkush-Pipania/Scrapper/pkg/scraper"
 	"github.com/Alkush-Pipania/Scrapper/pkg/turnstile"
+	"github.com/Alkush-Pipania/Scrapper/pkg/youtube"
 	"github.com/rabbitmq/amqp091-go"
 )
 
@@ -34,8 +39,16 @@ func NewContainer(ctx context.Context, cfg *config.Config) (*Container, error) {
 	}
 
 	tsClient := turnstile.New(cfg.TurnstileSecret)
+	ytS := youtube.NewClient(cfg.YouTubeAPIKey)
+	browserClient := browserless.New(cfg.BrowserlessURL, cfg.BrowserlessToken)
+	s3Client, err := s3.NewClient(ctx, cfg.S3Client)
+	if err != nil {
+		return nil, err
+	}
 
-	scrapeWorker := scrape.NewScrapeWorker(rds, cfg.YouTubeAPIKey)
+	scrapS := scraper.New(browserClient, *s3Client, ytS, &http.Client{})
+
+	scrapeWorker := scrape.NewScrapeWorker(rds, scrapS)
 	scrapeService := scrape.NewService(rds, pbh)
 	scrapeHandler := scrape.NewHandler(scrapeService, tsClient)
 	return &Container{

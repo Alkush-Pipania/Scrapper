@@ -6,13 +6,16 @@ import (
 )
 
 type Config struct {
-	RabbitMQ        RabbitMQConfig
-	PrefetchCount   int
-	Port            string
-	RedisURL        string
-	Env             string
-	TurnstileSecret string
-	YouTubeAPIKey   string
+	RabbitMQ         RabbitMQConfig
+	PrefetchCount    int
+	Port             string
+	RedisURL         string
+	Env              string
+	TurnstileSecret  string
+	YouTubeAPIKey    string
+	S3Client         ClientConfig
+	BrowserlessURL   string
+	BrowserlessToken string
 }
 
 func LoadEnv() *Config {
@@ -31,6 +34,15 @@ func LoadEnv() *Config {
 		Env:             getenv("ENV", "development"),
 		TurnstileSecret: getenv("TURNSTILE_SECRET_KEY", ""),
 		YouTubeAPIKey:   getenv("YOUTUBE_API_KEY", ""),
+		S3Client: ClientConfig{
+			Region:     getenv("DO_REGION", ""),
+			Endpoint:   getenv("DO_ENDPOINT", ""),
+			AccessKey:  getenv("DO_ACCESS_KEY", ""),
+			SecretKey:  getenv("DO_SECRET_KEY", ""),
+			BucketName: getenv("DO_BUCKET", ""),
+		},
+		BrowserlessURL:   getenv("BURL", ""),
+		BrowserlessToken: getenv("BTOKEN", ""),
 	}
 }
 
