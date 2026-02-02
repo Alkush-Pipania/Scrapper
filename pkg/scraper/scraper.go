@@ -5,56 +5,71 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/Alkush-Pipania/Scrapper/pkg/browserless"
+	"github.com/Alkush-Pipania/Scrapper/pkg/s3"
 	"github.com/Alkush-Pipania/Scrapper/pkg/youtube"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/go-shiori/go-readability"
+	"github.com/rs/zerolog/log"
 )
 
 type Scraper struct {
+	browser       *browserless.Client
+	uploader      s3.Client
 	client        *http.Client
 	youtubeClient *youtube.Client
 }
 
-func New() *Scraper {
+func New(b *browserless.Client, u s3.Client, yt *youtube.Client, h *http.Client) *Scraper {
 	return &Scraper{
-		client: createHTTPClient(),
+		client:        h,
+		browser:       b,
+		uploader:      u,
+		youtubeClient: yt,
 	}
 }
 
-func NewWithYouTube(youtubeAPIKey string) *Scraper {
-	s := New()
-	if youtubeAPIKey != "" {
-		s.youtubeClient = youtube.NewClient(youtubeAPIKey)
-	}
-	return s
-}
+// func NewWithYouTube(youtubeAPIKey string) *Scraper {
+// 	s := New()
+// 	if youtubeAPIKey != "" {
+// 		s.youtubeClient = youtube.NewClient(youtubeAPIKey)
+// 	}
+// 	return s
+// }
 
-func createHTTPClient() *http.Client {
-	return &http.Client{
-		Timeout: 30 * time.Second,
-		Transport: &http.Transport{
-			DialContext: (&net.Dialer{
-				Timeout: 15 * time.Second,
-			}).DialContext,
-			ResponseHeaderTimeout: 20 * time.Second,
-			IdleConnTimeout:       90 * time.Second,
-			MaxIdleConns:          100,
-			MaxIdleConnsPerHost:   10,
-		},
-	}
-}
+// func createHTTPClient() *http.Client {
+// 	return &http.Client{
+// 		Timeout: 30 * time.Second,
+// 		Transport: &http.Transport{
+// 			DialContext: (&net.Dialer{
+// 				Timeout: 15 * time.Second,
+// 			}).DialContext,
+// 			ResponseHeaderTimeout: 20 * time.Second,
+// 			IdleConnTimeout:       90 * time.Second,
+// 			MaxIdleConns:          100,
+// 			MaxIdleConnsPerHost:   10,
+// 		},
+// 	}
+// }
 
 func (s *Scraper) Scrape(ctx context.Context, targetURL string) (*ScrapedData, error) {
 	// Check if this is a YouTube URL and we have a YouTube client configured
 	if s.youtubeClient != nil && youtube.IsYouTubeURL(targetURL) {
 		return s.scrapeYouTube(ctx, targetURL)
+	}
+
+	if s.browser != nil {
+		data, err := s.scrapeViaBrowser(ctx, targetURL)
+		if err == nil {
+			return data, nil
+		}
+		log.Warn().Err(err).Str("url", targetURL).Msg("Browser scraping failed")
 	}
 
 	// Standard HTML scraping for non-YouTube URLs
@@ -143,6 +158,34 @@ func (s *Scraper) Scrape(ctx context.Context, targetURL string) (*ScrapedData, e
 	}
 
 	return result, nil
+}
+
+func (s *Scraper) scrapeViaBrowser(ctx context.Context, url string) (*ScrapedData, error) {
+	// Call our new package
+	res, err := s.browser.Scrape(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+
+	data := &ScrapedData{
+		URL:         url,
+		Title:       res.Title,
+		ContentText: res.ContentText,
+		SiteName:    "Web",
+	}
+
+	// Handle Screenshot Upload via Interface
+	if len(res.Screenshot) > 0 {
+		fileName := fmt.Sprintf("screenshots/%d.jpg", time.Now().UnixNano())
+		imgURL, err := s.uploader.Upload(ctx, fileName, res.Screenshot, "image/jpeg")
+		if err == nil {
+			data.ImageURL = imgURL
+		} else {
+			log.Error().Err(err).Msg("Failed to upload screenshot")
+		}
+	}
+
+	return data, nil
 }
 
 func (s *Scraper) scrapeYouTube(ctx context.Context, targetURL string) (*ScrapedData, error) {

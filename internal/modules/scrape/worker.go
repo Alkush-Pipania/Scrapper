@@ -15,10 +15,10 @@ type ScrapeWorker struct {
 	scraper *scraper.Scraper
 }
 
-func NewScrapeWorker(store *redis.RedisStore, youtubeAPIKey string) *ScrapeWorker {
+func NewScrapeWorker(store *redis.RedisStore, scraper *scraper.Scraper) *ScrapeWorker {
 	return &ScrapeWorker{
 		store:   store,
-		scraper: scraper.NewWithYouTube(youtubeAPIKey),
+		scraper: scraper,
 	}
 }
 
