@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -35,14 +36,19 @@ func New(endpoint string, token string) *Client {
 
 func (b *Client) Scrape(ctx context.Context, targetURL string) (*Result, error) {
 	query := `
-	mutation {
+	mutation Scrape {
 	  goto(url: "%s") {
-		title
+		status
+		time
+	  }
+	  pageText: text {
 		text
-		html
-		screenshot(fullPage: false, type: jpeg, quality: 75) {
-		  base64
-		}
+	  }
+	  pageTitle: text(selector: "title") {
+		text
+	  }
+	  shot: screenshot(fullPage: false, type: jpeg, quality: 75) {
+		base64
 	  }
 	}`
 
@@ -51,7 +57,8 @@ func (b *Client) Scrape(ctx context.Context, targetURL string) (*Result, error) 
 	}
 	jsonPayload, _ := json.Marshal(payload)
 
-	url := fmt.Sprintf("%s/graphql?token=%s", b.endpoint, b.token)
+	base := strings.TrimRight(b.endpoint, "/")
+	url := fmt.Sprintf("%s/chromium/bql?token=%s", base, b.token)
 	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonPayload))
 	if err != nil {
 		return nil, err
@@ -72,13 +79,18 @@ func (b *Client) Scrape(ctx context.Context, targetURL string) (*Result, error) 
 	var qlResp struct {
 		Data struct {
 			Goto struct {
-				Title      string `json:"title"`
-				Text       string `json:"text"`
-				HTML       string `json:"html"`
-				Screenshot struct {
-					Base64 string `json:"base64"`
-				} `json:"screenshot"`
+				Status int     `json:"status"`
+				Time   float64 `json:"time"`
 			} `json:"goto"`
+			PageText struct {
+				Text string `json:"text"`
+			} `json:"pageText"`
+			PageTitle struct {
+				Text string `json:"text"`
+			} `json:"pageTitle"`
+			Shot struct {
+				Base64 string `json:"base64"`
+			} `json:"shot"`
 		} `json:"data"`
 		Errors []interface{} `json:"errors"`
 	}
@@ -92,12 +104,11 @@ func (b *Client) Scrape(ctx context.Context, targetURL string) (*Result, error) 
 	}
 
 	// Decode screenshot
-	imgBytes, _ := base64.StdEncoding.DecodeString(qlResp.Data.Goto.Screenshot.Base64)
+	imgBytes, _ := base64.StdEncoding.DecodeString(qlResp.Data.Shot.Base64)
 
 	return &Result{
-		Title:       qlResp.Data.Goto.Title,
-		ContentText: qlResp.Data.Goto.Text,
-		// HTML:        qlResp.Data.Goto.HTML,
-		Screenshot: imgBytes,
+		Title:       strings.TrimSpace(qlResp.Data.PageTitle.Text),
+		ContentText: qlResp.Data.PageText.Text,
+		Screenshot:  imgBytes,
 	}, nil
 }

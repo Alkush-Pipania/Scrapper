@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Alkush-Pipania/Scrapper/pkg/scraper"
+	domain "github.com/Alkush-Pipania/Scrapper/internal/domain/scrape"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -31,7 +31,7 @@ func (r *RedisStore) key(id string) string {
 	return "job:" + id
 }
 
-func (r *RedisStore) save(job *Job) error {
+func (r *RedisStore) save(job *domain.Job) error {
 	data, err := json.Marshal(job)
 	if err != nil {
 		return fmt.Errorf("failed to save job: %w", err)
@@ -40,15 +40,15 @@ func (r *RedisStore) save(job *Job) error {
 }
 
 func (r *RedisStore) CreateJob(id, url string) error {
-	job := &Job{
+	job := &domain.Job{
 		ID:     id,
 		URL:    url,
-		Status: StatusPending,
+		Status: domain.StatusPending,
 	}
 	return r.save(job)
 }
 
-func (r *RedisStore) UpdateStatus(id string, status JobStatus) error {
+func (r *RedisStore) UpdateStatus(id string, status domain.JobStatus) error {
 	job, err := r.GetJob(id)
 	if err != nil {
 		return err
@@ -57,15 +57,15 @@ func (r *RedisStore) UpdateStatus(id string, status JobStatus) error {
 	return r.save(job)
 }
 
-func (r *RedisStore) GetJob(id string) (*Job, error) {
+func (r *RedisStore) GetJob(id string) (*domain.Job, error) {
 	ctx := context.Background()
 
 	val, err := r.redisClient.Get(ctx, r.key(id)).Result()
 	if err != nil {
-		return nil, ErrJobNotFound
+		return nil, domain.ErrJobNotFound
 	}
 
-	var job Job
+	var job domain.Job
 	if err := json.Unmarshal([]byte(val), &job); err != nil {
 		return nil, err
 	}
@@ -77,17 +77,17 @@ func (r *RedisStore) FailJob(id string, errMsg string) error {
 	if err != nil {
 		return err
 	}
-	job.Status = StatusFailed
+	job.Status = domain.StatusFailed
 	job.Error = errMsg
 	return r.save(job)
 }
 
-func (r *RedisStore) UpdateResult(id string, data *scraper.ScrapedData) error {
+func (r *RedisStore) UpdateResult(id string, data *domain.ScrapedData) error {
 	job, err := r.GetJob(id)
 	if err != nil {
 		return err
 	}
-	job.Status = StatusCompleted
+	job.Status = domain.StatusCompleted
 	job.Result = data
 	return r.save(job)
 }

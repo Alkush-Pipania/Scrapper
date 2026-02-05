@@ -76,7 +76,7 @@ func (c *Consumer) Consumer(ctx context.Context, handler Handler) error {
 			defer c.wg.Done()
 			defer func() { <-c.sem }()
 
-			msgCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			msgCtx, cancel := context.WithTimeout(ctx, 1*time.Minute)
 			defer cancel()
 
 			if err := handler.Handle(msgCtx, m); err != nil {

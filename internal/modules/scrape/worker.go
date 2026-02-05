@@ -4,18 +4,19 @@ import (
 	"context"
 	"encoding/json"
 
+	domain "github.com/Alkush-Pipania/Scrapper/internal/domain/scrape"
+	"github.com/Alkush-Pipania/Scrapper/internal/modules/scrape/engine"
 	"github.com/Alkush-Pipania/Scrapper/pkg/redis"
-	"github.com/Alkush-Pipania/Scrapper/pkg/scraper"
 	"github.com/rabbitmq/amqp091-go"
 	"github.com/rs/zerolog/log"
 )
 
 type ScrapeWorker struct {
 	store   *redis.RedisStore
-	scraper *scraper.Scraper
+	scraper *engine.Scraper
 }
 
-func NewScrapeWorker(store *redis.RedisStore, scraper *scraper.Scraper) *ScrapeWorker {
+func NewScrapeWorker(store *redis.RedisStore, scraper *engine.Scraper) *ScrapeWorker {
 	return &ScrapeWorker{
 		store:   store,
 		scraper: scraper,
@@ -36,7 +37,7 @@ func (w *ScrapeWorker) Handle(ctx context.Context, msg amqp091.Delivery) error {
 
 	log.Info().Str("job_id", payload.ID).Str("url", payload.URL).Msg("Starting scrape")
 
-	_ = w.store.UpdateStatus(payload.ID, "processing")
+	_ = w.store.UpdateStatus(payload.ID, domain.StatusProcessing)
 
 	data, err := w.scraper.Scrape(ctx, payload.URL)
 	if err != nil {

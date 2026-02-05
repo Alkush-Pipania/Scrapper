@@ -5,12 +5,14 @@ import (
 	"net/http"
 
 	"github.com/Alkush-Pipania/Scrapper/config"
+	infraBrowserless "github.com/Alkush-Pipania/Scrapper/internal/infra/browserless"
+	infraYouTube "github.com/Alkush-Pipania/Scrapper/internal/infra/youtube"
 	"github.com/Alkush-Pipania/Scrapper/internal/modules/scrape"
+	"github.com/Alkush-Pipania/Scrapper/internal/modules/scrape/engine"
 	"github.com/Alkush-Pipania/Scrapper/pkg/browserless"
 	"github.com/Alkush-Pipania/Scrapper/pkg/mq"
 	"github.com/Alkush-Pipania/Scrapper/pkg/redis"
 	"github.com/Alkush-Pipania/Scrapper/pkg/s3"
-	"github.com/Alkush-Pipania/Scrapper/pkg/scraper"
 	"github.com/Alkush-Pipania/Scrapper/pkg/turnstile"
 	"github.com/Alkush-Pipania/Scrapper/pkg/youtube"
 	"github.com/rabbitmq/amqp091-go"
@@ -46,7 +48,10 @@ func NewContainer(ctx context.Context, cfg *config.Config) (*Container, error) {
 		return nil, err
 	}
 
-	scrapS := scraper.New(browserClient, *s3Client, ytS, &http.Client{})
+	browserAdapter := infraBrowserless.NewAdapter(browserClient)
+	youtubeAdapter := infraYouTube.NewAdapter(ytS)
+
+	scrapS := engine.New(browserAdapter, s3Client, youtubeAdapter, &http.Client{})
 
 	scrapeWorker := scrape.NewScrapeWorker(rds, scrapS)
 	scrapeService := scrape.NewService(rds, pbh)
