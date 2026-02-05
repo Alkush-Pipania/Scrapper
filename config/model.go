@@ -8,3 +8,11 @@ type RabbitMQConfig struct {
 	RoutingKey   string `mapstructure:"routing_key"`
 	WorkerCount  int    `mapstructure:"worker_count"`
 }
+
+type ClientConfig struct {
+	Region     string `mapstructure:"region"`
+	Endpoint   string `mapstructure:"endpoint"`
+	AccessKey  string `mapstructure:"access_key"`
+	SecretKey  string `mapstructure:"secret_key"`
+	BucketName string `mapstructure:"bucket_name"`
+}
