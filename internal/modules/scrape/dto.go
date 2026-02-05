@@ -1,6 +1,6 @@
 package scrape
 
-import "errors"
+import domain "github.com/Alkush-Pipania/Scrapper/internal/domain/scrape"
 
 type SubmitScrapeRequest struct {
 	URL string `json:"url" validate:"required,url"`
@@ -10,7 +10,7 @@ type SubmitScrapeResponse struct {
 	JobID string `json:"job_id"`
 }
 
-var ErrJobNotFound = errors.New("job not found")
+var ErrJobNotFound = domain.ErrJobNotFound
 
 type ScrapeStatusResponse struct {
 	ID     string      `json:"id"`
