@@ -68,9 +68,9 @@ jobs:
             chmod 600 /home/ec2-user/scrapper/.env
 
             docker pull ${{ env.IMAGE_NAME }}:latest
-            docker rm -f scrapper-api || true
+            docker rm -f scrapper-service || true
 
-            docker run -d --name scrapper-api \
+            docker run -d --name scrapper-service \
               --network scraper_scrapper-network \
               --env-file /home/ec2-user/scrapper/.env \
               -p 127.0.0.1:8082:8082 \
