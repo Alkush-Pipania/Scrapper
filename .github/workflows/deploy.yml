@@ -1,0 +1,78 @@
+name: Crud Service Deploy
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_NAME: ghcr.io/alkush-pipania/scrapper
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            mkdir -p /home/ec2-user/scrapper
+
+            cat > /home/ec2-user/scrapper/.env <<EOF
+            TURNSTILE_SECRET_KEY=${{ secrets.TURNSTILE_SECRET_KEY }}
+            YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}
+            DO_REGION=${{ secrets.DO_REGION }}
+            DO_ENDPOINT=${{ secrets.DO_ENDPOINT }}
+            DO_BUCKET=${{ secrets.DO_BUCKET }}
+            DO_ACCESS_KEY=${{ secrets.DO_ACCESS_KEY }}
+            DO_SECRET_KEY=${{ secrets.DO_SECRET_KEY }}
+            BTOKEN=${{ secrets.BTOKEN }}
+            BURL=${{ secrets.BURL }}
+            REDIS_URL=${{ secrets.REDIS_URL }}
+            RABBITMQ_URL=${{ secrets.RABBITMQ_URL }}
+            PORT=8082
+            ENV=production
+            EOF
+
+            chmod 600 /home/ec2-user/scrapper/.env
+
+            docker pull ${{ env.IMAGE_NAME }}:latest
+            docker rm -f scrapper-api || true
+
+            docker run -d --name scrapper-api \
+              --network scraper_scrapper-network \
+              --env-file /home/ec2-user/scrapper/.env \
+              -p 127.0.0.1:8082:8082 \
+              --restart=always \
+              ${{ env.IMAGE_NAME }}:latest

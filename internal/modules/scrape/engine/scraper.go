@@ -36,7 +36,7 @@ func (s *Scraper) Scrape(ctx context.Context, targetURL string) (*domain.Scraped
 	staticData, staticErr := s.scrapeStatic(ctx, targetURL)
 	var eval staticEval
 
-	if staticErr == nil {
+	if staticErr == nil { // TODO : refactor the nesting
 		eval = s.evaluateStatic(staticData)
 		if eval.ok {
 			// Try to fill missing image with browser screenshot (only if needed)
