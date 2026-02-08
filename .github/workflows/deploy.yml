@@ -47,9 +47,9 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            mkdir -p /home/ec2-user/scrapper
+            mkdir -p /home/ubuntu/scrapper
 
-            cat > /home/ec2-user/scrapper/.env <<EOF
+            cat > /home/ubuntu/scrapper/.env <<EOF
             TURNSTILE_SECRET_KEY=${{ secrets.TURNSTILE_SECRET_KEY }}
             YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}
             DO_REGION=${{ secrets.DO_REGION }}
@@ -65,14 +65,18 @@ jobs:
             ENV=production
             EOF
 
-            chmod 600 /home/ec2-user/scrapper/.env
+            chmod 600 /home/ubuntu/scrapper/.env
 
+            docker network inspect scraper_scrapper-network >/dev/null 2>&1 || docker network create scraper_scrapper-network
+            
             docker pull ${{ env.IMAGE_NAME }}:latest
-            docker rm -f scrapper-service || true
+            if docker ps -a --format '{{.Names}}' | grep -q '^scrapper-service$'; then
+              docker rm -f scrapper-service
+            fi
 
             docker run -d --name scrapper-service \
               --network scraper_scrapper-network \
-              --env-file /home/ec2-user/scrapper/.env \
+              --env-file /home/ubuntu/scrapper/.env \
               -p 127.0.0.1:8082:8082 \
               --restart=always \
               ${{ env.IMAGE_NAME }}:latest
