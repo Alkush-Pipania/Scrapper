@@ -12,11 +12,11 @@ import (
 )
 
 type ScrapeWorker struct {
-	store   *redis.RedisStore
+	store   *redis.Client
 	scraper *engine.Scraper
 }
 
-func NewScrapeWorker(store *redis.RedisStore, scraper *engine.Scraper) *ScrapeWorker {
+func NewScrapeWorker(store *redis.Client, scraper *engine.Scraper) *ScrapeWorker {
 	return &ScrapeWorker{
 		store:   store,
 		scraper: scraper,

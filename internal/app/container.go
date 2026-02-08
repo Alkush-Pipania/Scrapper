@@ -32,7 +32,10 @@ func NewContainer(ctx context.Context, cfg *config.Config) (*Container, error) {
 		return nil, err
 	}
 	// setup redis
-	rds := redis.NewRedis(cfg.RedisURL)
+	rds, err := redis.New(cfg.RedisURL)
+	if err != nil {
+		return nil, err
+	}
 
 	// setup rabbitmq publisher
 	pbh, err := mq.NewPublisher(rmqpConn, cfg.RabbitMQ.ExchangeName, cfg.RabbitMQ.RoutingKey)

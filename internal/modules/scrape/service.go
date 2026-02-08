@@ -11,11 +11,11 @@ import (
 )
 
 type service struct {
-	rds  *redis.RedisStore
+	rds  *redis.Client
 	mqch *mq.Publisher
 }
 
-func NewService(rds *redis.RedisStore, mqch *mq.Publisher) *service {
+func NewService(rds *redis.Client, mqch *mq.Publisher) *service {
 	return &service{
 		rds:  rds,
 		mqch: mqch,
